@@ -275,7 +275,7 @@
         <!-- browser address bar + controls -->
         <div class="browser-controls">
             <label for="urlInput">🌐</label>
-            <input type="text" id="urlInput" placeholder="https:// or file://" value="file:///C:/Users/user/Desktop/alpha/index.html" />
+            <input type="text" id="urlInput" placeholder="https:// or file://" value="file:///C:/Users/user/Desktop/alpha/alpha.html" />
             <button class="nav-btn" id="goBtn">Go</button>
             <button class="nav-btn" id="backBtn">◀</button>
             <button class="nav-btn" id="forwardBtn">▶</button>
@@ -497,20 +497,20 @@
             });
 
             homeBtn.addEventListener('click', function() {
-                const home = 'file:///C:/Users/user/Desktop/alpha/index.html';
+                const home = 'file:///C:/Users/user/Desktop/alpha/alpha.html';
                 urlInput.value = home;
                 loadUrl(home);
             });
 
             // ----- DEFAULT: load your local file -----
-            const defaultUrl = 'file:///C:/Users/user/Desktop/alpha/index.html';
+            const defaultUrl = 'file:///C:/Users/user/Desktop/alpha/alpha.html';
             historyStack = [defaultUrl];
             historyIndex = 0;
             iframe.src = defaultUrl;
             urlInput.value = defaultUrl;
             updateNavButtons();
 
-            console.log('🔹 Browser ready. Default file: file:///C:/Users/user/Desktop/alpha/index.html');
+            console.log('🔹 Browser ready. Default file: file:///C:/Users/user/Desktop/alpha/alpha.html');
             console.log('🔹 Note: Some browsers restrict file:// access from http:// pages.');
 
         })();
