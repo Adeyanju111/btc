@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BTC price + browser (local file default)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+        }
+
+        body {
+            background: #0b1426;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 0.8rem;
+            gap: 0.6rem;
+            overflow: hidden;
+        }
+
+        /* ----- top bar: tiny price card + browser controls ----- */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+
+        /* price card – compact, minimal */
+        .card {
+            background: rgba(18, 28, 50, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-radius: 1.8rem;
+            padding: 0.7rem 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            border: 1px solid rgba(255, 215, 0, 0.15);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            flex-shrink: 0;
+        }
+
+        .card h3 {
+            color: #f0f4ff;
+            font-weight: 600;
+            font-size: 0.9rem;
+            letter-spacing: -0.3px;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            white-space: nowrap;
+        }
+
+        .price {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #f7d875, #f7931a);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: -0.5px;
+            line-height: 1;
+            display: flex;
+            align-items: baseline;
+            gap: 0.2rem;
+        }
+
+        .price small {
+            font-size: 0.8rem;
+            font-weight: 400;
+            background: none;
+            color: #8899cc;
+            -webkit-background-clip: unset;
+            background-clip: unset;
+            text-shadow: none;
+        }
+
+        .meta-row {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .update-badge {
+            background: rgba(247, 147, 26, 0.12);
+            padding: 0.15rem 0.7rem;
+            border-radius: 40px;
+            border: 1px solid rgba(247, 147, 26, 0.12);
+            color: #f0b347;
+            font-weight: 400;
+            font-size: 0.6rem;
+            letter-spacing: 0.2px;
+            white-space: nowrap;
+        }
+
+        .refresh-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            color: #b0c4f0;
+            padding: 0.15rem 0.8rem;
+            border-radius: 40px;
+            font-weight: 400;
+            font-size: 0.65rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .refresh-btn:hover {
+            background: rgba(247, 147, 26, 0.2);
+            border-color: #f7931a;
+            color: #fff;
+        }
+
+        .refresh-btn:active {
+            transform: scale(0.94);
+        }
+
+        .error-msg {
+            color: #f77a7a;
+            background: rgba(247, 122, 122, 0.08);
+            padding: 0.1rem 0.6rem;
+            border-radius: 40px;
+            border: 1px solid rgba(247, 122, 122, 0.12);
+            font-size: 0.6rem;
+        }
+
+        /* ----- browser controls (address bar) ----- */
+        .browser-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(18, 28, 50, 0.6);
+            backdrop-filter: blur(8px);
+            padding: 0.4rem 1rem;
+            border-radius: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .browser-controls label {
+            color: #8899cc;
+            font-weight: 400;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .browser-controls input {
+            flex: 1;
+            min-width: 80px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 40px;
+            padding: 0.3rem 0.8rem;
+            color: #f0f4ff;
+            font-size: 0.8rem;
+            outline: none;
+            transition: 0.2s;
+        }
+
+        .browser-controls input:focus {
+            border-color: #f7931a;
+            box-shadow: 0 0 0 2px rgba(247, 147, 26, 0.1);
+        }
+
+        .browser-controls input::placeholder {
+            color: #4a5a7a;
+            font-size: 0.7rem;
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            color: #b0c4f0;
+            padding: 0.2rem 0.7rem;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.1rem;
+            white-space: nowrap;
+        }
+
+        .nav-btn:hover {
+            background: rgba(247, 147, 26, 0.15);
+            border-color: #f7931a;
+            color: #fff;
+        }
+
+        /* ----- embedded browser (iframe) – takes almost all space ----- */
+        .browser-container {
+            flex: 1;
+            min-height: 0;
+            background: #0f172a;
+            border-radius: 1.5rem;
+            overflow: hidden;
+            border: 1px solid rgba(255, 215, 0, 0.06);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+            position: relative;
+        }
+
+        .browser-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #ffffff;
+            display: block;
+        }
+
+        .iframe-fallback {
+            position: absolute;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            color: #5a6a8a;
+            font-size: 0.9rem;
+            pointer-events: none;
+            background: #0f172a;
+            padding: 2rem;
+            text-align: center;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .iframe-fallback.show {
+            display: flex;
+        }
+
+        .iframe-fallback span {
+            font-size: 1.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .top-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .card {
+                justify-content: space-between;
+            }
+            .browser-controls {
+                flex-wrap: wrap;
+            }
+            .price {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TOP BAR: tiny price card + browser nav -->
+    <div class="top-bar">
+        <!-- compact price card -->
+        <div class="card">
+            <h3>💵 BTC/USDT</h3>
+            <div class="price" id="price">--</div>
+            <div class="meta-row">
+                <span class="update-badge" id="updateStatus">🔄</span>
+                <button class="refresh-btn" id="refreshBtn">⟳</button>
+            </div>
+        </div>
+
+        <!-- browser address bar + controls -->
+        <div class="browser-controls">
+            <label for="urlInput">🌐</label>
+            <input type="text" id="urlInput" placeholder="https:// or file://" value="file:///C:/Users/user/Desktop/alpha/index.html" />
+            <button class="nav-btn" id="goBtn">Go</button>
+            <button class="nav-btn" id="backBtn">◀</button>
+            <button class="nav-btn" id="forwardBtn">▶</button>
+            <button class="nav-btn" id="homeBtn">🏠</button>
+        </div>
+    </div>
+
+    <!-- embedded browser – takes almost all remaining space -->
+    <div class="browser-container">
+        <iframe id="browserFrame" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"></iframe>
+        <div class="iframe-fallback" id="fallbackMsg">
+            <span>⚠️</span>
+            <span>Unable to load page.<br>Some sites block embedding or the file may not be accessible.</span>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            "use strict";
+
+            // ----- PRICE CARD LOGIC (auto-refresh) -----
+            const priceElement = document.getElementById('price');
+            const updateStatus = document.getElementById('updateStatus');
+            const refreshBtn = document.getElementById('refreshBtn');
+            const API_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd';
+
+            function formatPrice(value) {
+                if (value === undefined || value === null || isNaN(value)) return '--';
+                const num = Number(value);
+                if (num >= 1000) {
+                    return num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                }
+                return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+
+            async function fetchPrice() {
+                updateStatus.textContent = '⏳';
+                updateStatus.style.color = '#f0b347';
+
+                try {
+                    const response = await fetch(API_URL, {
+                        headers: { 'Accept': 'application/json' },
+                        cache: 'no-store'
+                    });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const data = await response.json();
+                    const btc = data.bitcoin;
+                    if (!btc || btc.usd === undefined) throw new Error('Invalid response');
+
+                    const usdPrice = btc.usd;
+                    priceElement.innerHTML = `${formatPrice(usdPrice)} <small>USDT</small>`;
+
+                    const now = new Date();
+                    const timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                    updateStatus.textContent = `✅ ${timeString}`;
+                    updateStatus.style.color = '#5fdc7c';
+
+                    const oldError = document.querySelector('.error-msg');
+                    if (oldError) oldError.remove();
+                } catch (error) {
+                    console.error('BTC fetch error:', error);
+                    priceElement.innerHTML = `⚠️ <small>USDT</small>`;
+                    updateStatus.textContent = '❌';
+                    updateStatus.style.color = '#f77a7a';
+
+                    const card = document.querySelector('.card');
+                    let errorEl = card.querySelector('.error-msg');
+                    if (!errorEl) {
+                        errorEl = document.createElement('span');
+                        errorEl.className = 'error-msg';
+                        errorEl.textContent = '⚠️ retry';
+                        card.appendChild(errorEl);
+                    }
+                    setTimeout(() => {
+                        if (errorEl && errorEl.parentNode) errorEl.remove();
+                    }, 5000);
+                }
+            }
+
+            fetchPrice();
+
+            const AUTO_INTERVAL = 30000;
+            let intervalId = setInterval(() => {
+                if (!document.hidden) fetchPrice();
+            }, AUTO_INTERVAL);
+
+            refreshBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const oldError = document.querySelector('.error-msg');
+                if (oldError) oldError.remove();
+                updateStatus.textContent = '⏳';
+                updateStatus.style.color = '#f0b347';
+                fetchPrice();
+                clearInterval(intervalId);
+                intervalId = setInterval(() => {
+                    if (!document.hidden) fetchPrice();
+                }, AUTO_INTERVAL);
+            });
+
+            document.addEventListener('visibilitychange', function() {
+                if (!document.hidden) fetchPrice();
+            });
+
+            window.addEventListener('beforeunload', function() {
+                clearInterval(intervalId);
+            });
+
+            // ----- EMBEDDED BROWSER (local files supported) -----
+            const iframe = document.getElementById('browserFrame');
+            const urlInput = document.getElementById('urlInput');
+            const goBtn = document.getElementById('goBtn');
+            const backBtn = document.getElementById('backBtn');
+            const forwardBtn = document.getElementById('forwardBtn');
+            const homeBtn = document.getElementById('homeBtn');
+            const fallbackMsg = document.getElementById('fallbackMsg');
+
+            let historyStack = [];
+            let historyIndex = -1;
+
+            function showFallback(show) {
+                if (show) {
+                    fallbackMsg.classList.add('show');
+                } else {
+                    fallbackMsg.classList.remove('show');
+                }
+            }
+
+            function loadUrl(url) {
+                if (!url || url.trim() === '') return;
+
+                let finalUrl = url.trim();
+
+                if (!/^[a-zA-Z]+:\/\//.test(finalUrl)) {
+                    finalUrl = 'https://' + finalUrl;
+                }
+
+                if (!/^https?:\/\//i.test(finalUrl) && !/^file:\/\//i.test(finalUrl)) {
+                    alert('Only http://, https://, and file:// URLs are allowed.');
+                    return;
+                }
+
+                urlInput.value = finalUrl;
+                showFallback(false);
+
+                try {
+                    iframe.src = finalUrl;
+                } catch (e) {
+                    console.warn('Error setting iframe src:', e);
+                    showFallback(true);
+                    return;
+                }
+
+                if (historyStack.length === 0 || historyStack[historyStack.length - 1] !== finalUrl) {
+                    if (historyIndex < historyStack.length - 1) {
+                        historyStack = historyStack.slice(0, historyIndex + 1);
+                    }
+                    historyStack.push(finalUrl);
+                    historyIndex = historyStack.length - 1;
+                }
+                updateNavButtons();
+            }
+
+            function updateNavButtons() {
+                backBtn.style.opacity = (historyIndex > 0) ? '1' : '0.4';
+                forwardBtn.style.opacity = (historyIndex < historyStack.length - 1) ? '1' : '0.4';
+            }
+
+            iframe.addEventListener('load', function() {
+                showFallback(false);
+                try {
+                    const frameUrl = iframe.contentWindow.location.href;
+                    if (frameUrl && frameUrl !== 'about:blank') {
+                        urlInput.value = frameUrl;
+                    }
+                } catch (e) { /* cross-origin */ }
+            });
+
+            iframe.addEventListener('error', function() {
+                showFallback(true);
+            });
+
+            goBtn.addEventListener('click', function() {
+                const val = urlInput.value.trim();
+                if (val) loadUrl(val);
+            });
+
+            urlInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const val = urlInput.value.trim();
+                    if (val) loadUrl(val);
+                }
+            });
+
+            backBtn.addEventListener('click', function() {
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    const prev = historyStack[historyIndex];
+                    if (prev) {
+                        urlInput.value = prev;
+                        iframe.src = prev;
+                        showFallback(false);
+                        updateNavButtons();
+                    }
+                }
+            });
+
+            forwardBtn.addEventListener('click', function() {
+                if (historyIndex < historyStack.length - 1) {
+                    historyIndex++;
+                    const next = historyStack[historyIndex];
+                    if (next) {
+                        urlInput.value = next;
+                        iframe.src = next;
+                        showFallback(false);
+                        updateNavButtons();
+                    }
+                }
+            });
+
+            homeBtn.addEventListener('click', function() {
+                const home = 'file:///C:/Users/user/Desktop/alpha/index.html';
+                urlInput.value = home;
+                loadUrl(home);
+            });
+
+            // ----- DEFAULT: load your local file -----
+            const defaultUrl = 'file:///C:/Users/user/Desktop/alpha/index.html';
+            historyStack = [defaultUrl];
+            historyIndex = 0;
+            iframe.src = defaultUrl;
+            urlInput.value = defaultUrl;
+            updateNavButtons();
+
+            console.log('🔹 Browser ready. Default file: file:///C:/Users/user/Desktop/alpha/index.html');
+            console.log('🔹 Note: Some browsers restrict file:// access from http:// pages.');
+
+        })();
+    </script>
+</body>
+</html>
